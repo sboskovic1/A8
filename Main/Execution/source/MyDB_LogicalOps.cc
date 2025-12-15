@@ -30,10 +30,15 @@ MyDB_TableReaderWriterPtr LogicalTableScan :: execute (map <string, MyDB_TableRe
 
 	cout << "In logical Table Scan execute" << endl;
 
+    for (auto a : allTableReaderWriters) {
+        cout << "Table name: " << a.first << endl;
+    }
+
     cout << "Input spec table name: " << inputSpec->getName() << endl;
     string inputName = inputSpec->getName();
-    string sampleAtt = allTableReaderWriters[inputName]->getTable()->getSchema()->getAtts()[0].first;
+    string sampleAtt = inputSpec->getSchema()->getAtts()[0].first;
     string prefix = sampleAtt.substr(0, sampleAtt.find('_'));
+    cout << "sampleAtt: " << sampleAtt << endl;
     cout << "prefix: " << prefix << endl;
     MyDB_TableReaderWriterPtr input = make_shared<MyDB_TableReaderWriter>(allTableReaderWriters[inputName]->getTable()->alias(prefix), allTableReaderWriters[inputName]->getBufferMgr());
 
@@ -73,8 +78,10 @@ MyDB_TableReaderWriterPtr LogicalJoin :: execute (map <string, MyDB_TableReaderW
 
     // Not sure how to get equality checks or if it should be a vector or just one
     vector <pair <string, string>> equalityChecks;
+    cout << "Critical section" << endl;
     for (auto &a: outputSelectionPredicate) {
         string pred = a->toString ();
+        cout << "pred: " << pred << endl;
         vector<string> results;
 
         size_t pos = 0;
@@ -85,6 +92,7 @@ MyDB_TableReaderWriterPtr LogicalJoin :: execute (map <string, MyDB_TableReaderW
             results.push_back(pred.substr(pos + 1, end - pos - 1));
             pos = end + 1;
         }
+        cout << "results: " << results.size() << endl;
 
         for (const auto& r : results) {
             cout << r << endl;
@@ -93,7 +101,36 @@ MyDB_TableReaderWriterPtr LogicalJoin :: execute (map <string, MyDB_TableReaderW
         if (results.size() != 2) {
             cout << "CRITICAL ERROR: More than 2 atts in outputSelectionPredicate entry for join: " << pred << endl; 
         } else {
-            equalityChecks.push_back(make_pair("[" + results[0] + "]", "[" + results[1] + "]"));
+            bool firstInLeft = false;
+            bool firstInRight = false;
+            bool secondInLeft = false;
+            bool secondInRight = false;
+            for (auto &b : leftInput->getTable()->getSchema()->getAtts()) {
+                if (b.first == results[0]) {
+                    firstInLeft = true;
+                }
+                if (b.first == results[1]) {
+                    secondInLeft = true;
+                }
+                if (firstInLeft && secondInLeft) break;
+            }
+            for (auto &b : rightInput->getTable()->getSchema()->getAtts()) {
+                if (b.first == results[0]) {
+                    firstInRight = true;
+                }
+                if (b.first == results[1]) {
+                    secondInRight = true;
+                }
+                if (firstInRight && secondInRight) break;
+            }
+            if ((firstInLeft && secondInLeft) || (firstInRight && secondInRight)) {
+                continue;
+            } else if (firstInLeft && secondInRight) {
+                equalityChecks.push_back(make_pair("[" + results[0] + "]", "[" + results[1] + "]"));
+            } else if (firstInRight && secondInLeft) {
+                equalityChecks.push_back(make_pair("[" + results[1] + "]", "[" + results[0] + "]"));
+            }
+
         }
     }
 
