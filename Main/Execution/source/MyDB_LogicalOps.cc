@@ -114,9 +114,11 @@ MyDB_TableReaderWriterPtr LogicalJoin :: execute (map <string, MyDB_TableReaderW
     int minPages = min(leftInput->getNumPages(), rightInput->getNumPages());
 
     if (minPages > bufferPages / 2) {
+        cout << "running merge join" << endl;
         SortMergeJoin myOp (leftInput, rightInput, output, finalSelectionPredicate, projections, equalityChecks[0], leftSelectionPredicate, rightSelectionPredicate);
         myOp.run ();
     } else {
+        cout << "running scan join" << endl;
         ScanJoin myOp (leftInput, rightInput, output, finalSelectionPredicate, projections, equalityChecks, leftSelectionPredicate, rightSelectionPredicate);
         myOp.run ();
     }
