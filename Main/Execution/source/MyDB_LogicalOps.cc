@@ -18,7 +18,7 @@ string createSelectionPredicate(vector <ExprTreePtr> selectionPredicates) {
 
     for (int i = 1; i < selectionPredicates.size(); i++) {
         string pred = selectionPredicates[i]->toString();
-        selectionPredicate = "&& ( " + pred + ", " + selectionPredicate + ")";
+        selectionPredicate = "&& (" + selectionPredicate + ", " + pred + ")";
     }
     cout << "selectionPredicate: " << selectionPredicate << endl;
 
@@ -33,15 +33,34 @@ MyDB_TableReaderWriterPtr LogicalTableScan :: execute (map <string, MyDB_TableRe
 		// RegularSelection (MyDB_TableReaderWriterPtr input, MyDB_TableReaderWriterPtr output,
 	// 	string selectionPredicate, vector <string> projections);
 
-    // Find the tableReaderWriter for the input table
+    cout << "Input spec table name: " << inputSpec->getName() << endl;
+    MyDB_TableReaderWriterPtr input = allTableReaderWriters[inputSpec->getName()];
 
-    // Create a tableReaderWriter for the output table
+    MyDB_TableReaderWriterPtr output = make_shared<MyDB_TableReaderWriter>(outputSpec, input->getBufferMgr());
 
-    // Create the selectionPredicate according to vector <ExprTreePtr> selectionPred
+    // string selectionPredicate = createSelectionPredicate(selectionPred);
+    string selectionPredicate = "";
+    if (selectionPred.size() >= 1) {
+        selectionPredicate = selectionPred[0]->toString();
+    }
 
-    // Create the vector of string projections somehow
+    for (int i = 1; i < selectionPred.size(); i++) {
+        string pred = selectionPred[i]->toString();
+        selectionPredicate = "&& (" + selectionPredicate + ", " + pred + ")";
+    }
 
-    return nullptr;
+    cout << "selectionPredicate: " << selectionPredicate << endl;
+
+    vector <string> projections;
+    for (pair <string, MyDB_AttTypePtr> &a : outputSpec->getSchema()->getAtts()) {
+        projections.push_back("[" + a.first + "]");
+    }
+
+    cout << "running regular selection " << endl;
+    RegularSelection myOp (input, output, selectionPredicate, projections);
+    myOp.run();
+
+    return output;
 }
 
 MyDB_TableReaderWriterPtr LogicalJoin :: execute (map <string, MyDB_TableReaderWriterPtr> &allTableReaderWriters,
