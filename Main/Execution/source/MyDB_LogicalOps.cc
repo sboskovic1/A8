@@ -93,7 +93,7 @@ MyDB_TableReaderWriterPtr LogicalJoin :: execute (map <string, MyDB_TableReaderW
         if (results.size() != 2) {
             cout << "CRITICAL ERROR: More than 2 atts in outputSelectionPredicate entry for join: " << pred << endl; 
         } else {
-            equalityChecks.push_back(make_pair(results[0], results[1]));
+            equalityChecks.push_back(make_pair("[" + results[0] + "]", "[" + results[1] + "]"));
         }
     }
 
@@ -104,8 +104,8 @@ MyDB_TableReaderWriterPtr LogicalJoin :: execute (map <string, MyDB_TableReaderW
     }
 
     // Not sure how to get these
-    string leftSelectionPredicate = "";
-    string rightSelectionPredicate = "";
+    string leftSelectionPredicate = "bool[true]";
+    string rightSelectionPredicate = "bool[true]";
     // string leftSelectionPredicate = createSelectionPredicate(leftInputOp->getOutputSelectionPredicate());
     // string rightSelectionPredciate = createSelectionPredicate(rightInputOp->getOutputSelectionPredicate());
 
