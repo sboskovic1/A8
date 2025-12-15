@@ -31,7 +31,8 @@ MyDB_TableReaderWriterPtr LogicalTableScan :: execute (map <string, MyDB_TableRe
 	cout << "In logical Table Scan execute" << endl;
 
     cout << "Input spec table name: " << inputSpec->getName() << endl;
-    MyDB_TableReaderWriterPtr input = allTableReaderWriters[inputSpec->getName()];
+    MyDB_TableReaderWriterPtr input = make_shared<MyDB_TableReaderWriter>(allTableReaderWriters[inputSpec->getName()]->getTable()->alias("l"), allTableReaderWriters[inputSpec->getName()]->getBufferMgr());
+
     MyDB_TableReaderWriterPtr output = make_shared<MyDB_TableReaderWriter>(outputSpec, input->getBufferMgr());
     string selectionPredicate = createSelectionPredicate(selectionPred);
 
