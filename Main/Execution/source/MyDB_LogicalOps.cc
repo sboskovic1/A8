@@ -11,12 +11,12 @@
 #include "MyDB_Table.h"
 
 string createSelectionPredicate(vector <ExprTreePtr> selectionPredicates) {
-    string selectionPredicate = "";
-    if (selectionPredicates.size() >= 1) {
-        selectionPredicate = selectionPredicates[0]->toString();
-    }
+    string selectionPredicate = "bool[true]";
+    // if (selectionPredicates.size() >= 1) {
+    //     selectionPredicate = selectionPredicates[0]->toString();
+    // }
 
-    for (int i = 1; i < selectionPredicates.size(); i++) {
+    for (int i = 0; i < selectionPredicates.size(); i++) {
         string pred = selectionPredicates[i]->toString();
         selectionPredicate = "&& (" + selectionPredicate + ", " + pred + ")";
     }
@@ -29,27 +29,11 @@ MyDB_TableReaderWriterPtr LogicalTableScan :: execute (map <string, MyDB_TableRe
 	map <string, MyDB_BPlusTreeReaderWriterPtr> &allBPlusReaderWriters) {
 
 	cout << "In logical Table Scan execute" << endl;
-    // Call this function then call run()
-		// RegularSelection (MyDB_TableReaderWriterPtr input, MyDB_TableReaderWriterPtr output,
-	// 	string selectionPredicate, vector <string> projections);
 
     cout << "Input spec table name: " << inputSpec->getName() << endl;
     MyDB_TableReaderWriterPtr input = allTableReaderWriters[inputSpec->getName()];
-
     MyDB_TableReaderWriterPtr output = make_shared<MyDB_TableReaderWriter>(outputSpec, input->getBufferMgr());
-
-    // string selectionPredicate = createSelectionPredicate(selectionPred);
-    string selectionPredicate = "";
-    if (selectionPred.size() >= 1) {
-        selectionPredicate = selectionPred[0]->toString();
-    }
-
-    for (int i = 1; i < selectionPred.size(); i++) {
-        string pred = selectionPred[i]->toString();
-        selectionPredicate = "&& (" + selectionPredicate + ", " + pred + ")";
-    }
-
-    cout << "selectionPredicate: " << selectionPredicate << endl;
+    string selectionPredicate = createSelectionPredicate(selectionPred);
 
     vector <string> projections;
     for (pair <string, MyDB_AttTypePtr> &a : outputSpec->getSchema()->getAtts()) {
@@ -67,40 +51,72 @@ MyDB_TableReaderWriterPtr LogicalJoin :: execute (map <string, MyDB_TableReaderW
 	map <string, MyDB_BPlusTreeReaderWriterPtr> &allBPlusReaderWriters) {
 
 	cout << "In logical join execute" << endl;
-    // Need to create this function then run it, not sure how to determine if to call sortMergeJoin or ScanJoin
-    // SortMergeJoin (MyDB_TableReaderWriterPtr leftInput, MyDB_TableReaderWriterPtr rightInput,
-	// 	MyDB_TableReaderWriterPtr output, string finalSelectionPredicate, 
-	// 	vector <string> projections,
-	// 	pair <string, string> equalityCheck, string leftSelectionPredicate,
-	// 	string rightSelectionPredicate);
-
-    // Or call this function
-    // ScanJoin (MyDB_TableReaderWriterPtr leftInput, MyDB_TableReaderWriterPtr rightInput,
-    // MyDB_TableReaderWriterPtr output, string finalSelectionPredicate, 
-    // vector <string> projections,
-    // vector <pair <string, string>> equalityChecks, string leftSelectionPredicate,
-    // string rightSelectionPredicate);
+    cout << "Outputselection predicate for join: " << endl;
+    for (auto &a: outputSelectionPredicate) {
+        cout << "    " << a->toString () << "\n";
+    }
 	
     MyDB_TableReaderWriterPtr leftInput = leftInputOp->execute(allTableReaderWriters, allBPlusReaderWriters);
     MyDB_TableReaderWriterPtr rightInput = rightInputOp->execute(allTableReaderWriters, allBPlusReaderWriters);
     MyDB_TableReaderWriterPtr output = make_shared<MyDB_TableReaderWriter>(outputSpec, leftInput->getBufferMgr());
     string finalSelectionPredicate = createSelectionPredicate(outputSelectionPredicate);
 
-    // Not sure how to get projections
     vector <string> projections;
+    for (pair <string, MyDB_AttTypePtr> &a : outputSpec->getSchema()->getAtts()) {
+        projections.push_back("[" + a.first + "]");
+    }
 
     // Not sure how to get equality checks or if it should be a vector or just one
     vector <pair <string, string>> equalityChecks;
+    for (auto &a: outputSelectionPredicate) {
+        string pred = a->toString ();
+        vector<string> results;
+
+        size_t pos = 0;
+        while ((pos = pred.find('[', pos)) != std::string::npos) {
+            size_t end = pred.find(']', pos);
+            if (end == std::string::npos) break;
+
+            results.push_back(pred.substr(pos + 1, end - pos - 1));
+            pos = end + 1;
+        }
+
+        for (const auto& r : results) {
+            cout << r << endl;
+        }
+
+        if (results.size() != 2) {
+            cout << "CRITICAL ERROR: More than 2 atts in outputSelectionPredicate entry for join: " << pred << endl; 
+        } else {
+            equalityChecks.push_back(make_pair(results[0], results[1]));
+        }
+    }
+
+    cout << "Created equality checks " << endl;
+    for (auto &a : equalityChecks) {
+        cout << "first: " << a.first << endl;
+        cout << "second: " << a.second << endl;
+    }
 
     // Not sure how to get these
+    string leftSelectionPredicate = "";
+    string rightSelectionPredicate = "";
     // string leftSelectionPredicate = createSelectionPredicate(leftInputOp->getOutputSelectionPredicate());
     // string rightSelectionPredciate = createSelectionPredicate(rightInputOp->getOutputSelectionPredicate());
 
-    // SortMergeJoin myOp (leftInput, rightInput, output, finalSelectionPredicate, projections, equalityChecks leftSelectionPredicate, rightSelectionPredicate);
-    // myOp.run ();
-    // return output;
+    // Chose scan Join or sort merge join based on number of pages
+    size_t bufferPages = leftInput->getBufferMgr()->getNumPages();
+    int minPages = min(leftInput->getNumPages(), rightInput->getNumPages());
 
-	return nullptr;
+    if (minPages > bufferPages / 2) {
+        SortMergeJoin myOp (leftInput, rightInput, output, finalSelectionPredicate, projections, equalityChecks[0], leftSelectionPredicate, rightSelectionPredicate);
+        myOp.run ();
+    } else {
+        ScanJoin myOp (leftInput, rightInput, output, finalSelectionPredicate, projections, equalityChecks, leftSelectionPredicate, rightSelectionPredicate);
+        myOp.run ();
+    }
+
+    return output;
 }
 
 #endif
