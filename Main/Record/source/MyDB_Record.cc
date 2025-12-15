@@ -18,6 +18,7 @@ char *MyDB_Record :: findsymbol (char val, char *input) {
 
 
 func MyDB_Record :: compileComputation (string compileMe) {
+	cout << "String to compile: " << compileMe << endl;
 	char *str = (char *) compileMe.c_str ();
 	return compileHelper (str).first;
 }
