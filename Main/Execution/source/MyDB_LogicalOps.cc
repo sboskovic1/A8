@@ -12,15 +12,12 @@
 
 string createSelectionPredicate(vector <ExprTreePtr> selectionPredicates) {
     string selectionPredicate = "bool[true]";
-    // if (selectionPredicates.size() >= 1) {
-    //     selectionPredicate = selectionPredicates[0]->toString();
-    // }
 
     for (int i = 0; i < selectionPredicates.size(); i++) {
         string pred = selectionPredicates[i]->toString();
         selectionPredicate = "&& (" + selectionPredicate + ", " + pred + ")";
     }
-    cout << "selectionPredicate: " << selectionPredicate << endl;
+    // cout << "selectionPredicate: " << selectionPredicate << endl;
 
     return selectionPredicate;
 }
@@ -28,18 +25,18 @@ string createSelectionPredicate(vector <ExprTreePtr> selectionPredicates) {
 MyDB_TableReaderWriterPtr LogicalTableScan :: execute (map <string, MyDB_TableReaderWriterPtr> &allTableReaderWriters,
 	map <string, MyDB_BPlusTreeReaderWriterPtr> &allBPlusReaderWriters) {
 
-	cout << "In logical Table Scan execute" << endl;
+	// cout << "In logical Table Scan execute" << endl;
 
-    for (auto a : allTableReaderWriters) {
-        cout << "Table name: " << a.first << endl;
-    }
+    // for (auto a : allTableReaderWriters) {
+        // cout << "Table name: " << a.first << endl;
+    // }
 
-    cout << "Input spec table name: " << inputSpec->getName() << endl;
+    // cout << "Input spec table name: " << inputSpec->getName() << endl;
     string inputName = inputSpec->getName();
     string sampleAtt = inputSpec->getSchema()->getAtts()[0].first;
     string prefix = sampleAtt.substr(0, sampleAtt.find('_'));
-    cout << "sampleAtt: " << sampleAtt << endl;
-    cout << "prefix: " << prefix << endl;
+    // cout << "sampleAtt: " << sampleAtt << endl;
+    // cout << "prefix: " << prefix << endl;
     MyDB_TableReaderWriterPtr input = make_shared<MyDB_TableReaderWriter>(allTableReaderWriters[inputName]->getTable()->alias(prefix), allTableReaderWriters[inputName]->getBufferMgr());
 
     MyDB_TableReaderWriterPtr output = make_shared<MyDB_TableReaderWriter>(outputSpec, input->getBufferMgr());
@@ -50,7 +47,7 @@ MyDB_TableReaderWriterPtr LogicalTableScan :: execute (map <string, MyDB_TableRe
         projections.push_back("[" + a.first + "]");
     }
 
-    cout << "running regular selection " << endl;
+    // cout << "running regular selection " << endl;
     RegularSelection myOp (input, output, selectionPredicate, projections);
     myOp.run();
 
@@ -60,11 +57,11 @@ MyDB_TableReaderWriterPtr LogicalTableScan :: execute (map <string, MyDB_TableRe
 MyDB_TableReaderWriterPtr LogicalJoin :: execute (map <string, MyDB_TableReaderWriterPtr> &allTableReaderWriters,
 	map <string, MyDB_BPlusTreeReaderWriterPtr> &allBPlusReaderWriters) {
 
-	cout << "In logical join execute" << endl;
-    cout << "Outputselection predicate for join: " << endl;
-    for (auto &a: outputSelectionPredicate) {
-        cout << "    " << a->toString () << "\n";
-    }
+	// cout << "In logical join execute" << endl;
+    // cout << "Outputselection predicate for join: " << endl;
+    // for (auto &a: outputSelectionPredicate) {
+    //     cout << "    " << a->toString () << "\n";
+    // }
 	
     MyDB_TableReaderWriterPtr leftInput = leftInputOp->execute(allTableReaderWriters, allBPlusReaderWriters);
     MyDB_TableReaderWriterPtr rightInput = rightInputOp->execute(allTableReaderWriters, allBPlusReaderWriters);
@@ -78,10 +75,15 @@ MyDB_TableReaderWriterPtr LogicalJoin :: execute (map <string, MyDB_TableReaderW
 
     // Not sure how to get equality checks or if it should be a vector or just one
     vector <pair <string, string>> equalityChecks;
-    cout << "Critical section" << endl;
+    // cout << "Critical section" << endl;
     for (auto &a: outputSelectionPredicate) {
         string pred = a->toString ();
-        cout << "pred: " << pred << endl;
+        // cout << "pred: " << pred << endl;
+        if (pred.rfind("!", 0) == 0) {
+            // cout << "pred starts with !, skipping" << endl;
+            continue;
+        }
+
         vector<string> results;
 
         size_t pos = 0;
@@ -92,14 +94,14 @@ MyDB_TableReaderWriterPtr LogicalJoin :: execute (map <string, MyDB_TableReaderW
             results.push_back(pred.substr(pos + 1, end - pos - 1));
             pos = end + 1;
         }
-        cout << "results: " << results.size() << endl;
+        // cout << "results: " << results.size() << endl;
 
-        for (const auto& r : results) {
-            cout << r << endl;
-        }
+        // for (const auto& r : results) {
+        //     cout << r << endl;
+        // }
 
         if (results.size() != 2) {
-            cout << "CRITICAL ERROR: More than 2 atts in outputSelectionPredicate entry for join: " << pred << endl; 
+            // cout << "CRITICAL ERROR: More than 2 atts in outputSelectionPredicate entry for join: " << pred << endl; 
         } else {
             bool firstInLeft = false;
             bool firstInRight = false;
@@ -134,28 +136,25 @@ MyDB_TableReaderWriterPtr LogicalJoin :: execute (map <string, MyDB_TableReaderW
         }
     }
 
-    cout << "Created equality checks " << endl;
-    for (auto &a : equalityChecks) {
-        cout << "first: " << a.first << endl;
-        cout << "second: " << a.second << endl;
-    }
+    // cout << "Created equality checks " << endl;
+    // for (auto &a : equalityChecks) {
+        // cout << "first: " << a.first << endl;
+        // cout << "second: " << a.second << endl;
+    // }
 
-    // Not sure how to get these
     string leftSelectionPredicate = "bool[true]";
     string rightSelectionPredicate = "bool[true]";
-    // string leftSelectionPredicate = createSelectionPredicate(leftInputOp->getOutputSelectionPredicate());
-    // string rightSelectionPredciate = createSelectionPredicate(rightInputOp->getOutputSelectionPredicate());
 
     // Chose scan Join or sort merge join based on number of pages
     size_t bufferPages = leftInput->getBufferMgr()->getNumPages();
     int minPages = min(leftInput->getNumPages(), rightInput->getNumPages());
 
     if (minPages > bufferPages / 2) {
-        cout << "running merge join" << endl;
+        // cout << "running merge join" << endl;
         SortMergeJoin myOp (leftInput, rightInput, output, finalSelectionPredicate, projections, equalityChecks[0], leftSelectionPredicate, rightSelectionPredicate);
         myOp.run ();
     } else {
-        cout << "running scan join" << endl;
+        // cout << "running scan join" << endl;
         ScanJoin myOp (leftInput, rightInput, output, finalSelectionPredicate, projections, equalityChecks, leftSelectionPredicate, rightSelectionPredicate);
         myOp.run ();
     }

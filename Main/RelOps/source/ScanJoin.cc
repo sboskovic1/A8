@@ -67,7 +67,7 @@ void ScanJoin :: run () {
 	// get the left input record 
 	MyDB_RecordPtr leftInputRec = leftTable->getEmptyRecord ();
 
-	cout << "Compiling left equality" << endl;
+	// cout << "Compiling left equality" << endl;
 
 	// and get the various functions whose output we'll hash
 	vector <func> leftEqualities;
@@ -75,11 +75,11 @@ void ScanJoin :: run () {
 		leftEqualities.push_back (leftInputRec->compileComputation (p.first));
 	}
 
-	cout << "Compiling left predicate" << endl;
+	// cout << "Compiling left predicate" << endl;
 	// now get the predicate
 	func leftPred = leftInputRec->compileComputation (leftSelectionPredicate);
 
-	cout << "Adding records to hash table" << endl;
+	// cout << "Adding records to hash table" << endl;
 	// add all of the records to the hash table
 	MyDB_RecordIteratorAltPtr myIter = getIteratorAlt (allData);
 
@@ -87,7 +87,7 @@ void ScanJoin :: run () {
 
 		// hash the current record
 		myIter->getCurrent (leftInputRec);
-		cout << "Current record to check: " << myIter << endl;
+		// cout << "Current record to check: " << myIter << endl;
 		
 		// see if it is accepted by the preicate
 		if (!leftPred ()->toBool ()) {
@@ -108,13 +108,13 @@ void ScanJoin :: run () {
 	
 	// get the right input record, and get the various functions over it
 	MyDB_RecordPtr rightInputRec = rightTable->getEmptyRecord ();
-	cout << "Compiling right equality" << endl;
+	// cout << "Compiling right equality" << endl;
 	vector <func> rightEqualities;
 	for (auto &p : equalityChecks) {
 		rightEqualities.push_back (rightInputRec->compileComputation (p.second));
 	}
 
-	cout << "Compiling right predicate" << endl;
+	// cout << "Compiling right predicate" << endl;
 	// now get the predicate
 	func rightPred = rightInputRec->compileComputation (rightSelectionPredicate);
 
@@ -129,12 +129,12 @@ void ScanJoin :: run () {
 	MyDB_RecordPtr combinedRec = make_shared <MyDB_Record> (mySchemaOut);
 	combinedRec->buildFrom (leftInputRec, rightInputRec);
 
-	cout << "Compiling final predicate" << endl;
+	// cout << "Compiling final predicate" << endl;
 	// now, get the final predicate over it
 	func finalPredicate = combinedRec->compileComputation (finalSelectionPredicate);
 
 	// and get the final set of computatoins that will be used to buld the output record
-	cout << "Compiling final computations" << endl;
+	// cout << "Compiling final computations" << endl;
 	vector <func> finalComputations;
 	for (string s : projections) {
 		finalComputations.push_back (combinedRec->compileComputation (s));

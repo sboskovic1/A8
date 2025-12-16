@@ -11,7 +11,7 @@ RegularSelection :: RegularSelection (MyDB_TableReaderWriterPtr inputIn, MyDB_Ta
 	output = outputIn;
 	selectionPredicate = selectionPredicateIn;
 	projections = projectionsIn;
-	cout << "Creating regular selection" << endl;
+	// cout << "Creating regular selection" << endl;
 }
 
 void RegularSelection :: run () {
@@ -19,17 +19,17 @@ void RegularSelection :: run () {
 	MyDB_RecordPtr inputRec = input->getEmptyRecord ();
 	MyDB_RecordPtr outputRec = output->getEmptyRecord ();
 	
-	cout << "Compiling final computations" << endl;
+	// cout << "Compiling final computations" << endl;
 	// compile all of the coputations that we need here
 	vector <func> finalComputations;
 	for (string s : projections) {
-		cout << "projection att: " << s << endl;
+		// cout << "projection att: " << s << endl;
 		finalComputations.push_back (inputRec->compileComputation (s));
 	}
-	cout << "Compiling selectino predicate" << endl;
+	// cout << "Compiling selectino predicate" << endl;
 	func pred = inputRec->compileComputation (selectionPredicate);
 
-	cout << "iterationg through input table" << endl;
+	// cout << "iterationg through input table" << endl;
 	// now, iterate through the B+-tree query results
 	MyDB_RecordIteratorAltPtr myIter = input->getIteratorAlt ();
 	while (myIter->advance ()) {
@@ -51,7 +51,7 @@ void RegularSelection :: run () {
 		output->append (outputRec);
 	}
 
-	cout << "Finished running regular selection" << endl;
+	// cout << "Finished running regular selection" << endl;
 }
 
 #endif
